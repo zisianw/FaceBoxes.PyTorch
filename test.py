@@ -10,6 +10,7 @@ from utils.nms_wrapper import nms
 import cv2
 from models.faceboxes import FaceBoxes
 from utils.box_utils import decode
+from utils.timer import Timer
 
 parser = argparse.ArgumentParser(description='FaceBoxes')
 
@@ -92,6 +93,8 @@ if __name__ == '__main__':
     elif args.dataset == "AFW":
         resize = 1
 
+    _t = {'forward_pass': Timer(), 'misc': Timer()}
+
     # testing begin
     for i, img_name in enumerate(test_dataset):
         image_path = testset_folder + img_name + '.jpg'
@@ -107,7 +110,10 @@ if __name__ == '__main__':
             img = img.cuda()
             scale = scale.cuda()
 
+        _t['forward_pass'].tic()
         out = net(img)  # forward pass
+        _t['forward_pass'].toc()
+        _t['misc'].tic()
         priorbox = PriorBox(cfg, out[2], (im_height, im_width), phase='test')
         priors = priorbox.forward()
         if args.cuda:
@@ -136,6 +142,7 @@ if __name__ == '__main__':
 
         # keep top-K faster NMS
         dets = dets[:args.keep_top_k, :]
+        _t['misc'].toc()
 
         # save dets
         if args.dataset == "FDDB":
@@ -159,5 +166,5 @@ if __name__ == '__main__':
                 ymin += 0.2 * (ymax - ymin + 1)
                 score = dets[k, 4]
                 fw.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(img_name, score, xmin, ymin, xmax, ymax))
-        print('im_detect: {:d}/{:d}'.format(i + 1, num_images))
+        print('im_detect: {:d}/{:d} forward_pass_time: {:.4f}s misc: {:.4f}s'.format(i + 1, num_images, _t['forward_pass'].average_time, _t['misc'].average_time))
     fw.close()
