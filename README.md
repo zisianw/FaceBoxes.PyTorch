@@ -75,6 +75,8 @@ $FaceBoxes_ROOT/data/FDDB/images/
 ```Shell
 # dataset choices = ['AFW', 'PASCAL', 'FDDB']
 python3 test.py --dataset FDDB
+# evaluate using cpu
+python3 test.py --cpu
 ```
 
 3. Download [eval_tool](https://bitbucket.org/marcopede/face-eval) to evaluate the performance.

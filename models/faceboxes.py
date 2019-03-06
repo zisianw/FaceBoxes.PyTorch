@@ -123,7 +123,7 @@ class FaceBoxes(nn.Module):
     x = self.inception1(x)
     x = self.inception2(x)
     x = self.inception3(x)
-    detection_dimension += [x.shape[2:]]
+    detection_dimension.append(x.shape[2:])
     sources.append(x)
     x = self.conv3_1(x)
     x = self.conv3_2(x)
@@ -134,8 +134,7 @@ class FaceBoxes(nn.Module):
     detection_dimension.append(x.shape[2:])
     sources.append(x)
     
-    detection_dimension = torch.Tensor(detection_dimension)
-    detection_dimension = detection_dimension.cuda()
+    detection_dimension = torch.tensor(detection_dimension, device=x.device)
 
     for (x, l, c) in zip(sources, self.loc, self.conf):
         loc.append(l(x).permute(0, 2, 3, 1).contiguous())

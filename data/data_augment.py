@@ -4,8 +4,9 @@ import random
 from utils.box_utils import matrix_iof
 
 
-def _crop(image, boxes, labels, img_dim, rgb_means):
+def _crop(image, boxes, labels, img_dim):
     height, width, _ = image.shape
+    pad_image_flag = True
 
     for _ in range(250):
         if random.uniform(0, 1) <= 0.2:
@@ -41,7 +42,7 @@ def _crop(image, boxes, labels, img_dim, rgb_means):
         b_h_t = (boxes_t[:, 3] - boxes_t[:, 1] + 1) / h * img_dim
         mask_b = np.minimum(b_w_t, b_h_t) > 16.0
         boxes_t = boxes_t[mask_b]
-        labels_t = labels_t[mask_b].copy()
+        labels_t = labels_t[mask_b]
 
         if boxes_t.shape[0] == 0:
             continue
@@ -53,14 +54,10 @@ def _crop(image, boxes, labels, img_dim, rgb_means):
         boxes_t[:, 2:] = np.minimum(boxes_t[:, 2:], roi[2:])
         boxes_t[:, 2:] -= roi[:2]
 
-        return image_t, boxes_t, labels_t
+        pad_image_flag = False
 
-    long_side = max(width, height)
-    image_t = np.empty((long_side, long_side, 3), dtype=image.dtype)
-    image_t[:, :] = rgb_means
-    image_t[0:0 + height, 0:0 + width] = image
-
-    return image_t, boxes, labels
+        return image_t, boxes_t, labels_t, pad_image_flag
+    return image, boxes, labels, pad_image_flag
 
 
 def _distort(image):
@@ -85,7 +82,7 @@ def _distort(image):
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        # saturation distortion
+        #saturation distortion
         if random.randrange(2):
             _convert(image[:, :, 1], alpha=random.uniform(0.5, 1.5))
 
@@ -105,7 +102,7 @@ def _distort(image):
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        # saturation distortion
+        #saturation distortion
         if random.randrange(2):
             _convert(image[:, :, 1], alpha=random.uniform(0.5, 1.5))
 
@@ -159,12 +156,23 @@ def _mirror(image, boxes):
     return image, boxes
 
 
-def preproc_for_test(image, insize, mean):
+def _pad_to_square(image, rgb_mean, pad_image_flag):
+    if not pad_image_flag:
+        return image
+    height, width, _ = image.shape
+    long_side = max(width, height)
+    image_t = np.empty((long_side, long_side, 3), dtype=image.dtype)
+    image_t[:, :] = rgb_mean
+    image_t[0:0 + height, 0:0 + width] = image
+    return image_t
+
+
+def _resize_subtract_mean(image, insize, rgb_mean):
     interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
     interp_method = interp_methods[random.randrange(5)]
     image = cv2.resize(image, (insize, insize), interpolation=interp_method)
     image = image.astype(np.float32)
-    image -= mean
+    image -= rgb_mean
     return image.transpose(2, 0, 1)
 
 
@@ -181,12 +189,15 @@ class preproc(object):
         boxes = targets[:, :-1].copy()
         labels = targets[:, -1].copy()
 
-        image_t = _distort(image)
-        # image_t, boxes_t = _expand(image_t, boxes, self.cfg['rgb_mean'], self.cfg['max_expand_ratio'])
-        image_t, boxes_t, labels_t = _crop(image_t, boxes, labels, self.img_dim, self.rgb_means)
+        #image_t = _distort(image)
+        #image_t, boxes_t = _expand(image_t, boxes, self.cfg['rgb_mean'], self.cfg['max_expand_ratio'])
+        #image_t, boxes_t, labels_t = _crop(image_t, boxes, labels, self.img_dim, self.rgb_means)
+        image_t, boxes_t, labels_t, pad_image_flag = _crop(image, boxes, labels, self.img_dim)
+        image_t = _distort(image_t)
+        image_t = _pad_to_square(image_t,self.rgb_means, pad_image_flag)
         image_t, boxes_t = _mirror(image_t, boxes_t)
         height, width, _ = image_t.shape
-        image_t = preproc_for_test(image_t, self.img_dim, self.rgb_means)
+        image_t = _resize_subtract_mean(image_t, self.img_dim, self.rgb_means)
         boxes_t[:, 0::2] /= width
         boxes_t[:, 1::2] /= height
 

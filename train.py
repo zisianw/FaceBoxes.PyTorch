@@ -1,6 +1,5 @@
 from __future__ import print_function
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 import torch
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
@@ -18,7 +17,6 @@ parser = argparse.ArgumentParser(description='FaceBoxes Training')
 parser.add_argument('--training_dataset', default='./data/WIDER_FACE', help='Training dataset directory')
 parser.add_argument('-b', '--batch_size', default=32, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=8, type=int, help='Number of workers used in dataloading')
-parser.add_argument('--cuda', default=True, type=bool, help='Use cuda to train model')
 parser.add_argument('--ngpu', default=2, type=int, help='gpus')
 parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
@@ -34,12 +32,13 @@ if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
 
 img_dim = 1024
-rgb_means = (104, 117, 123)
+rgb_means = (104, 117, 123) #bgr order
 num_classes = 2
 batch_size = args.batch_size
 weight_decay = args.weight_decay
 gamma = args.gamma
 momentum = args.momentum
+gpu_train = cfg['gpu_train']
 
 net = FaceBoxes('train', img_dim, num_classes)
 print("Printing net...")
@@ -60,12 +59,12 @@ if args.resume_net is not None:
         new_state_dict[name] = v
     net.load_state_dict(new_state_dict)
 
-if args.ngpu > 1:
+if args.ngpu > 1 and gpu_train:
     net = torch.nn.DataParallel(net, device_ids=list(range(args.ngpu)))
 
-if args.cuda:
-    net.cuda()
-    cudnn.benchmark = True
+device = torch.device('cuda:0' if gpu_train else 'cpu')
+cudnn.benchmark = True
+net = net.to(device)
 
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 criterion = MultiBoxLoss(num_classes, 0.35, True, 0, True, 7, 0.35, False)
@@ -73,8 +72,7 @@ criterion = MultiBoxLoss(num_classes, 0.35, True, 0, True, 7, 0.35, False)
 priorbox = PriorBox(cfg)
 with torch.no_grad():
     priors = priorbox.forward()
-    if args.cuda:
-        priors = priors.cuda()
+    priors = priors.to(device)
 
 
 def train():
@@ -110,7 +108,7 @@ def train():
 
         # load train data
         images, targets = next(batch_iterator)
-        if args.cuda:
+        if gpu_train:
             images = Variable(images.cuda())
             targets = [Variable(anno.cuda()) for anno in targets]
         else:

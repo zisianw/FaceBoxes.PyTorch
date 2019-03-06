@@ -3,10 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from utils.box_utils import match, log_sum_exp
-GPU = False
-if torch.cuda.is_available():
-    GPU = True
-
+from data import cfg
+GPU = cfg['gpu_train']
 
 class MultiBoxLoss(nn.Module):
     """SSD Weighted Loss Function
