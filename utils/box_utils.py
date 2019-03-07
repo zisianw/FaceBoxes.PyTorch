@@ -121,9 +121,8 @@ def match(threshold, truths, priors, variances, labels, loc_t, conf_t, idx):
 
     # ignore hard gt
     valid_gt_idx = best_prior_overlap[:, 0] >= 0.2
-    best_prior_overlap = best_prior_overlap[valid_gt_idx, :]
-    best_prior_idx = best_prior_idx[valid_gt_idx, :]
-    if best_prior_overlap.shape[0] <= 0:
+    best_prior_idx_filter = best_prior_idx[valid_gt_idx, :]
+    if best_prior_idx_filter.shape[0] <= 0:
         loc_t[idx] = 0
         conf_t[idx] = 0
         return
@@ -133,8 +132,9 @@ def match(threshold, truths, priors, variances, labels, loc_t, conf_t, idx):
     best_truth_idx.squeeze_(0)
     best_truth_overlap.squeeze_(0)
     best_prior_idx.squeeze_(1)
+    best_prior_idx_filter.squeeze_(1)
     best_prior_overlap.squeeze_(1)
-    best_truth_overlap.index_fill_(0, best_prior_idx, 2)  # ensure best prior
+    best_truth_overlap.index_fill_(0, best_prior_idx_filter, 2)  # ensure best prior
     # TODO refactor: index  best_prior_idx with long tensor
     # ensure every gt matches with its prior of max overlap
     for j in range(best_prior_idx.size(0)):
