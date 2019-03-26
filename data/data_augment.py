@@ -37,13 +37,6 @@ def _crop(image, boxes, labels, img_dim):
         boxes_t = boxes[mask_a].copy()
         labels_t = labels[mask_a].copy()
 
-        # ignore tiny faces
-        b_w_t = (boxes_t[:, 2] - boxes_t[:, 0] + 1) / w * img_dim
-        b_h_t = (boxes_t[:, 3] - boxes_t[:, 1] + 1) / h * img_dim
-        mask_b = np.minimum(b_w_t, b_h_t) > 16.0
-        boxes_t = boxes_t[mask_b]
-        labels_t = labels_t[mask_b]
-
         if boxes_t.shape[0] == 0:
             continue
 
@@ -53,6 +46,16 @@ def _crop(image, boxes, labels, img_dim):
         boxes_t[:, :2] -= roi[:2]
         boxes_t[:, 2:] = np.minimum(boxes_t[:, 2:], roi[2:])
         boxes_t[:, 2:] -= roi[:2]
+
+        # keep the cropped image after resizing has at less one face > 16 pixel
+        b_w_t = (boxes_t[:, 2] - boxes_t[:, 0] + 1) / w * img_dim
+        b_h_t = (boxes_t[:, 3] - boxes_t[:, 1] + 1) / h * img_dim
+        mask_b = np.minimum(b_w_t, b_h_t) > 16.0
+        boxes_t = boxes_t[mask_b]
+        labels_t = labels_t[mask_b]
+
+        if boxes_t.shape[0] == 0:
+            continue
 
         pad_image_flag = False
 
