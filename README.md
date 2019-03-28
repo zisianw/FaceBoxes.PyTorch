@@ -30,7 +30,7 @@ Please cite the paper in your publications if it helps your research:
 - [References](#references)
 
 ## Installation
-1. Install [PyTorch-0.4.0](https://pytorch.org/) according to your environment.
+1. Install [PyTorch](https://pytorch.org/) >= v1.0.0 following official instruction.
 
 2. Clone this repository. We will call the cloned directory as `$FaceBoxes_ROOT`.
 ```Shell
@@ -42,7 +42,7 @@ git clone https://github.com/zisianw/FaceBoxes.PyTorch.git
 ./make.sh
 ```
 
-_Note: We currently only support PyTorch-0.4.0 and Python 3+._
+_Note: Codes are based on Python 3+._
 
 ## Training
 1. Download [WIDER FACE](http://mmlab.ie.cuhk.edu.hk/projects/WIDERFace/index.html) dataset, place the images under this directory:
