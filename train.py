@@ -4,7 +4,6 @@ import torch
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import argparse
-from torch.autograd import Variable
 import torch.utils.data as data
 from data import AnnotationTransform, VOCDetection, detection_collate, preproc, cfg
 from layers.modules import MultiBoxLoss
@@ -108,12 +107,8 @@ def train():
 
         # load train data
         images, targets = next(batch_iterator)
-        if gpu_train:
-            images = Variable(images.cuda())
-            targets = [Variable(anno.cuda()) for anno in targets]
-        else:
-            images = Variable(images)
-            targets = [Variable(anno) for anno in targets]
+        images = images.to(device)
+        targets = [anno.to(device) for anno in targets]
 
         # forward
         out = net(images)

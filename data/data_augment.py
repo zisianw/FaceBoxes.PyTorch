@@ -47,7 +47,7 @@ def _crop(image, boxes, labels, img_dim):
         boxes_t[:, 2:] = np.minimum(boxes_t[:, 2:], roi[2:])
         boxes_t[:, 2:] -= roi[:2]
 
-        # keep the cropped image after resizing has at less one face > 16 pixel
+	# make sure that the cropped image contains at least one face > 16 pixel at training image scale
         b_w_t = (boxes_t[:, 2] - boxes_t[:, 0] + 1) / w * img_dim
         b_h_t = (boxes_t[:, 3] - boxes_t[:, 1] + 1) / h * img_dim
         mask_b = np.minimum(b_w_t, b_h_t) > 16.0
@@ -186,7 +186,6 @@ class preproc(object):
         self.rgb_means = rgb_means
 
     def __call__(self, image, targets):
-        image = image.astype(np.float32)
         assert targets.shape[0] > 0, "this image does not have gt"
 
         boxes = targets[:, :-1].copy()
