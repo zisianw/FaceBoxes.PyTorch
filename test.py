@@ -88,20 +88,15 @@ if __name__ == '__main__':
         test_dataset = fr.read().split()
     num_images = len(test_dataset)
 
-    # testing scale
-    if args.dataset == "FDDB":
-        resize = 3
-    elif args.dataset == "PASCAL":
-        resize = 2.5
-    elif args.dataset == "AFW":
-        resize = 1
-
     _t = {'forward_pass': Timer(), 'misc': Timer()}
 
     # testing begin
     for i, img_name in enumerate(test_dataset):
         image_path = testset_folder + img_name + '.jpg'
         img = np.float32(cv2.imread(image_path, cv2.IMREAD_COLOR))
+        resize = 1
+        while img.shape[0] * resize < 800:
+            resize += 0.5
         if resize != 1:
             img = cv2.resize(img, None, None, fx=resize, fy=resize, interpolation=cv2.INTER_LINEAR)
         im_height, im_width, _ = img.shape
