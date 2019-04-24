@@ -9,6 +9,7 @@ from data import AnnotationTransform, VOCDetection, detection_collate, preproc, 
 from layers.modules import MultiBoxLoss
 from layers.functions.prior_box import PriorBox
 import time
+import datetime
 import math
 from models.faceboxes import FaceBoxes
 
@@ -30,13 +31,19 @@ args = parser.parse_args()
 if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
 
-img_dim = 1024
-rgb_means = (104, 117, 123) #bgr order
+img_dim = 1024 # only 1024 is supported
+rgb_mean = (104, 117, 123) # bgr order
 num_classes = 2
+num_gpu = args.ngpu
+num_workers = args.num_workers
 batch_size = args.batch_size
-weight_decay = args.weight_decay
-gamma = args.gamma
 momentum = args.momentum
+weight_decay = args.weight_decay
+initial_lr = args.lr
+gamma = args.gamma
+max_epoch = args.max_epoch
+training_dataset = args.training_dataset
+save_folder = args.save_folder
 gpu_train = cfg['gpu_train']
 
 net = FaceBoxes('train', img_dim, num_classes)
@@ -58,17 +65,17 @@ if args.resume_net is not None:
         new_state_dict[name] = v
     net.load_state_dict(new_state_dict)
 
-if args.ngpu > 1 and gpu_train:
-    net = torch.nn.DataParallel(net, device_ids=list(range(args.ngpu)))
+if num_gpu > 1 and gpu_train:
+    net = torch.nn.DataParallel(net, device_ids=list(range(num_gpu)))
 
 device = torch.device('cuda:0' if gpu_train else 'cpu')
 cudnn.benchmark = True
 net = net.to(device)
 
-optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+optimizer = optim.SGD(net.parameters(), lr=initial_lr, momentum=momentum, weight_decay=weight_decay)
 criterion = MultiBoxLoss(num_classes, 0.35, True, 0, True, 7, 0.35, False)
 
-priorbox = PriorBox(cfg)
+priorbox = PriorBox(cfg, image_size=(img_dim, img_dim))
 with torch.no_grad():
     priors = priorbox.forward()
     priors = priors.to(device)
@@ -79,10 +86,10 @@ def train():
     epoch = 0 + args.resume_epoch
     print('Loading Dataset...')
 
-    dataset = VOCDetection(args.training_dataset, preproc(img_dim, rgb_means), AnnotationTransform())
+    dataset = VOCDetection(training_dataset, preproc(img_dim, rgb_mean), AnnotationTransform())
 
-    epoch_size = math.ceil(len(dataset) / args.batch_size)
-    max_iter = args.max_epoch * epoch_size
+    epoch_size = math.ceil(len(dataset) / batch_size)
+    max_iter = max_epoch * epoch_size
 
     stepvalues = (200 * epoch_size, 250 * epoch_size)
     step_index = 0
@@ -95,15 +102,15 @@ def train():
     for iteration in range(start_iter, max_iter):
         if iteration % epoch_size == 0:
             # create batch iterator
-            batch_iterator = iter(data.DataLoader(dataset, batch_size, shuffle=True, num_workers=args.num_workers, collate_fn=detection_collate))
+            batch_iterator = iter(data.DataLoader(dataset, batch_size, shuffle=True, num_workers=num_workers, collate_fn=detection_collate))
             if (epoch % 10 == 0 and epoch > 0) or (epoch % 5 == 0 and epoch > 200):
-                torch.save(net.state_dict(), args.save_folder + 'FaceBoxes_epoch_' + repr(epoch) + '.pth')
+                torch.save(net.state_dict(), save_folder + 'FaceBoxes_epoch_' + str(epoch) + '.pth')
             epoch += 1
 
         load_t0 = time.time()
         if iteration in stepvalues:
             step_index += 1
-        lr = adjust_learning_rate(optimizer, args.gamma, epoch, step_index, iteration, epoch_size)
+        lr = adjust_learning_rate(optimizer, gamma, epoch, step_index, iteration, epoch_size)
 
         # load train data
         images, targets = next(batch_iterator)
@@ -112,7 +119,7 @@ def train():
 
         # forward
         out = net(images)
-        
+
         # backprop
         optimizer.zero_grad()
         loss_l, loss_c = criterion(out, priors, targets)
@@ -120,25 +127,27 @@ def train():
         loss.backward()
         optimizer.step()
         load_t1 = time.time()
-        print('Epoch:' + repr(epoch) + ' || epochiter: ' + repr(iteration % epoch_size) + '/' + repr(epoch_size) +
-              '|| Totel iter ' + repr(iteration) + ' || L: %.4f C: %.4f||' % (cfg['loc_weight']*loss_l.item(), loss_c.item()) +
-              'Batch time: %.4f sec. ||' % (load_t1 - load_t0) + 'LR: %.8f' % (lr))
+        batch_time = load_t1 - load_t0
+        eta = int(batch_time * (max_iter - iteration))
+        print('Epoch:{}/{} || Epochiter: {}/{} || Iter: {}/{} || L: {:.4f} C: {:.4f} || LR: {:.8f} || Batchtime: {:.4f} s || ETA: {}'.format(epoch, max_epoch, (iteration % epoch_size) + 1, epoch_size, iteration + 1, max_iter, loss_l.item(), loss_c.item(), lr, batch_time, str(datetime.timedelta(seconds=eta))))
 
-    torch.save(net.state_dict(), args.save_folder + 'Final_FaceBoxes.pth')
+
+    torch.save(net.state_dict(), save_folder + 'Final_FaceBoxes.pth')
 
 
 def adjust_learning_rate(optimizer, gamma, epoch, step_index, iteration, epoch_size):
-    """Sets the learning rate 
+    """Sets the learning rate
     # Adapted from PyTorch Imagenet example:
     # https://github.com/pytorch/examples/blob/master/imagenet/main.py
     """
-    if epoch < 0:
-        lr = 1e-6 + (args.lr-1e-6) * iteration / (epoch_size * 5) 
+    warmup_epoch = -1
+    if epoch <= warmup_epoch:
+        lr = 1e-6 + (initial_lr-1e-6) * iteration / (epoch_size * warmup_epoch)
     else:
-        lr = args.lr * (gamma ** (step_index))
+        lr = initial_lr * (gamma ** (step_index))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     return lr
-    
+
 if __name__ == '__main__':
     train()

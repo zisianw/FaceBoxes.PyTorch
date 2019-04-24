@@ -113,13 +113,12 @@ if __name__ == '__main__':
         scale = scale.to(device)
 
         _t['forward_pass'].tic()
-        out = net(img)  # forward pass
+        loc, conf = net(img)  # forward pass
         _t['forward_pass'].toc()
         _t['misc'].tic()
-        priorbox = PriorBox(cfg, out[2], (im_height, im_width), phase='test')
+        priorbox = PriorBox(cfg, image_size=(im_height, im_width))
         priors = priorbox.forward()
         priors = priors.to(device)
-        loc, conf, _ = out
         prior_data = priors.data
         boxes = decode(loc.data.squeeze(0), prior_data, cfg['variance'])
         boxes = boxes * scale / resize
