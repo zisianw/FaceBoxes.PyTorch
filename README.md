@@ -77,6 +77,8 @@ $FaceBoxes_ROOT/data/FDDB/images/
 python3 test.py --dataset FDDB
 # evaluate using cpu
 python3 test.py --cpu
+# visualize detection results
+python3 test.py -s --vis_thres 0.3
 ```
 
 3. Download [eval_tool](https://bitbucket.org/marcopede/face-eval) to evaluate the performance.

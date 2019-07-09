@@ -24,6 +24,8 @@ parser.add_argument('--confidence_threshold', default=0.05, type=float, help='co
 parser.add_argument('--top_k', default=5000, type=int, help='top_k')
 parser.add_argument('--nms_threshold', default=0.3, type=float, help='nms_threshold')
 parser.add_argument('--keep_top_k', default=750, type=int, help='keep_top_k')
+parser.add_argument('-s', '--show_image', action="store_true", default=False, help='show detection results')
+parser.add_argument('--vis_thres', default=0.5, type=float, help='visualization_threshold')
 args = parser.parse_args()
 
 
@@ -101,7 +103,8 @@ if __name__ == '__main__':
     # testing begin
     for i, img_name in enumerate(test_dataset):
         image_path = testset_folder + img_name + '.jpg'
-        img = np.float32(cv2.imread(image_path, cv2.IMREAD_COLOR))
+        img_raw = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        img = np.float32(img_raw)
         if resize != 1:
             img = cv2.resize(img, None, None, fx=resize, fy=resize, interpolation=cv2.INTER_LINEAR)
         im_height, im_width, _ = img.shape
@@ -168,4 +171,20 @@ if __name__ == '__main__':
                 score = dets[k, 4]
                 fw.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(img_name, score, xmin, ymin, xmax, ymax))
         print('im_detect: {:d}/{:d} forward_pass_time: {:.4f}s misc: {:.4f}s'.format(i + 1, num_images, _t['forward_pass'].average_time, _t['misc'].average_time))
+
+        # show image
+        if args.show_image:
+            for b in dets:
+                if b[4] < args.vis_thres:
+                    continue
+                text = "{:.4f}".format(b[4])
+                b = list(map(int, b))
+                cv2.rectangle(img_raw, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), 2)
+                cx = b[0]
+                cy = b[1] + 12
+                cv2.putText(img_raw, text, (cx, cy),
+                            cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
+            cv2.imshow('res', img_raw)
+            cv2.waitKey(0)
+
     fw.close()
