@@ -9,9 +9,9 @@ A [PyTorch](https://pytorch.org/) implementation of [FaceBoxes: A CPU Real-time 
 ## Performance
 | Dataset | Original Caffe | PyTorch Implementation |
 |:-|:-:|:-:|
-| AFW | 98.98 % | 98.47% |
-| PASCAL | 96.77 % | 96.84% |
-| FDDB | 95.90 % | 95.44% |
+| AFW | 98.98 % | 98.55% |
+| PASCAL | 96.77 % | 97.05% |
+| FDDB | 95.90 % | 96.00% |
 
 ## Citation
 Please cite the paper in your publications if it helps your research:
@@ -60,7 +60,7 @@ _Note: Codes are based on Python 3+._
   python3 train.py
   ```
 
-If you do not wish to train the model, you can download [our pre-trained model](https://drive.google.com/open?id=128m1QasIwQRkrY-Eb5Epi-ShXnrZWUCQ) and save it in `$FaceBoxes_ROOT/weights`.
+If you do not wish to train the model, you can download [our pre-trained model](https://drive.google.com/file/d/1aRdcf692S2-oxNdoc6oOjIVvoyvSHl52) and save it in `$FaceBoxes_ROOT/weights`.
 
 
 ## Evaluation
