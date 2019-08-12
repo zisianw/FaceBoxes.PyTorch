@@ -60,7 +60,7 @@ _Note: Codes are based on Python 3+._
   python3 train.py
   ```
 
-If you do not wish to train the model, you can download [our pre-trained model](https://drive.google.com/file/d/1aRdcf692S2-oxNdoc6oOjIVvoyvSHl52) and save it in `$FaceBoxes_ROOT/weights`.
+If you do not wish to train the model, you can download [our pre-trained model](https://drive.google.com/file/d/1tRVwOlu0QtjvADQ2H7vqrRwsWEmaqioI) and save it in `$FaceBoxes_ROOT/weights`.
 
 
 ## Evaluation
