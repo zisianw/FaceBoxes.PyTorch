@@ -126,7 +126,7 @@ if __name__ == '__main__':
         boxes = decode(loc.data.squeeze(0), prior_data, cfg['variance'])
         boxes = boxes * scale / resize
         boxes = boxes.cpu().numpy()
-        scores = conf.data.cpu().numpy()[:, 1]
+        scores = conf.squeeze(0).data.cpu().numpy()[:, 1]
 
         # ignore low scores
         inds = np.where(scores > args.confidence_threshold)[0]

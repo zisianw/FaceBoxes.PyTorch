@@ -141,7 +141,7 @@ class FaceBoxes(nn.Module):
 
     if self.phase == "test":
       output = (loc.view(loc.size(0), -1, 4),
-                self.softmax(conf.view(-1, self.num_classes)))
+                self.softmax(conf.view(conf.size(0), -1, self.num_classes)))
     else:
       output = (loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes))
