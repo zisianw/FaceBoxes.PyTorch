@@ -81,7 +81,7 @@ python3 test.py --cpu
 python3 test.py -s --vis_thres 0.3
 ```
 
-3. Download [eval_tool](https://bitbucket.org/marcopede/face-eval) to evaluate the performance.
+3. Download [eval_tool](https://github.com/sfzhang15/face-eval) to evaluate the performance.
     
 ## References
 - [Official release (Caffe)](https://github.com/sfzhang15/FaceBoxes)
