@@ -7,14 +7,18 @@ from .models.faceboxes import FaceBoxes
 from .utils.box_utils import decode
 
 class FaceBoxesFaceDetector(object):
-    def __init__(self):
+    def __init__(self, use_gpu=False):
         torch.set_grad_enabled(False)
         # net and model
         self.net = FaceBoxes(phase='test', size=None, num_classes=2)    # initialize detector
         weight_path = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'weights/FaceBoxes.pth'))
         self.net = self.load_model(self.net, weight_path, True)
         self.net.eval()
-        self.device = torch.device("cpu")
+        self.use_gpu = use_gpu
+        if self.use_gpu:
+            self.device = torch.device("cuda")
+        else:
+            self.device = torch.device("cpu")
         self.net = self.net.to(self.device)
 
     def check_keys(self, model, pretrained_state_dict):
