@@ -1,6 +1,20 @@
 import torch
 import numpy as np
 
+import subprocess
+
+DEFAULT_ATTRIBUTES = (
+    'index',
+    'uuid',
+    'name',
+    'timestamp',
+    'memory.total',
+    'memory.free',
+    'memory.used',
+    'utilization.gpu',
+    'utilization.memory'
+)
+
 
 def point_form(boxes):
     """ Convert prior_boxes to (xmin, ymin, xmax, ymax)
@@ -274,3 +288,38 @@ def nms(boxes, scores, overlap=0.5, top_k=200):
     return keep, count
 
 
+# https://qiita.com/tomotaka_ito/items/1da001c98b46ecf28ec7
+def get_gpu_info(nvidia_smi_path='nvidia-smi', keys=DEFAULT_ATTRIBUTES, no_units=True):
+    nu_opt = '' if not no_units else ',nounits'
+    cmd = '%s --query-gpu=%s --format=csv,noheader%s' % (nvidia_smi_path, ','.join(keys), nu_opt)
+    output = subprocess.check_output(cmd, shell=True)
+    lines = output.decode().split('\n')
+    lines = [ line.strip() for line in lines if line.strip() != '' ]
+
+    return [ { k: v for k, v in zip(keys, line.split(', ')) } for line in lines ]
+
+
+def get_faceboxes_max_batch_size(width=1080, height=1920, ch=3, print_status_flg=False):
+    gpu_info = get_gpu_info()
+    if print_status_flg:
+        print(gpu_info)
+
+    # faceboxesは内部でfloat32に変換するため1ch4byte
+    image_bit = width * height * ch * 4
+    image_mega_byte = image_bit / 1024 / 1024
+    gpu_batch_sizes = [int(int(info['memory.free']) / image_mega_byte) for info in gpu_info]
+
+    if print_status_flg:
+        print(f'cpu_batch_size: {cpu_batch_size}')
+        print(f'gpu_batch_sizes: {gpu_batch_sizes}')
+
+    return  min(gpu_batch_sizes)
+
+
+def batch_decode(loc, priors, variances):
+    boxes = torch.cat((
+        priors[:, :2] + loc[:, :, :2] * variances[0] * priors[:, 2:],
+        priors[:, 2:] * torch.exp(loc[:, :, 2:] * variances[1])), 2)
+    boxes[:, :, :2] -= boxes[:, :, 2:] / 2
+    boxes[:, :, 2:] += boxes[:, :, :2]
+    return boxes
