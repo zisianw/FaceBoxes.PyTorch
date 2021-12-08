@@ -96,7 +96,7 @@ class FaceBoxesFaceDetector(object):
     def get_batch_faceboxes(self, image_list:List[np.ndarray], *, batch_size=-1, threshold=0.2)->List[Tuple[List[float],List[np.ndarray]]]:
         """
         image_list: List[np.ndarray] 同じサイズの画像のリスト
-        batch_size: image_listの中から何個処理するかを指定する. デフォルトの場合はgpuの空きメモリから算出する
+        batch_size: image_listの中から何個処理するかを指定する. デフォルトの場合はgpuの空きメモリから算出する.　値は2以上にすること
         threshold: faceboxesのconfの閾値
 
         return: List[Tuple[confのリスト],[BoundingBoxのリスト]]
@@ -104,6 +104,9 @@ class FaceBoxesFaceDetector(object):
 
         if len(image_list) == 0:
             return [([],[])]
+
+        if (batch_size == 0) or (batch_size == 1):
+            raise ValueError("batch_size must be greater than or equal to 2.")
 
         im_height, im_width, im_ch = image_list[0].shape
 
@@ -124,6 +127,14 @@ class FaceBoxesFaceDetector(object):
 
         for i in range(0, int(len(image_list) / batch_size) + 1):
             images = image_list[batch_size * i: min(len(image_list), batch_size * (i+1))]
+
+            if len(images) == 0:
+                break
+
+            if len(images) == 1:
+                scores, boxes = self.get_faceboxes(images[0], threshold)
+                results.append((scores, boxes))
+                break
 
             im_height, im_width, im_ch = images[0].shape
             scale = torch.Tensor([im_width, im_height, im_width, im_height])
